@@ -144,13 +144,12 @@
 <body>
 
 <h1>나만의 명함 만들기</h1>
+<p style="font-size: 12px; color: #666; margin-top: -10px;">회전하기 버튼으로 앞/뒷면을 전환할 수 있어요.</p>
 
 <div class="toolbar">
+  <span id="sideLabel" style="font-size: 14px; margin-right: 10px; color: #888;"></span>
   앞/뒤 선택:
-  <select id="sideSelect">
-    <option value="front">앞면</option>
-    <option value="back">뒷면</option>
-  </select>
+  
   배경색: <input type="color" id="bgColorPicker" value="#f5f5f5">
   글자 크기: <input type="number" id="fontSizeInput" value="24" min="10" max="72" step="2">
   <input type="text" id="textInput" placeholder="텍스트 입력">
@@ -167,9 +166,12 @@
 </div>
 
 <div>
-  <img src="https://emojiapi.dev/api/v1/cherry/64.png" class="sticker" onclick="addSticker(this.src)">
-  <img src="https://emojiapi.dev/api/v1/star2/64.png" class="sticker" onclick="addSticker(this.src)">
-  <img src="https://emojiapi.dev/api/v1/bear/64.png" class="sticker" onclick="addSticker(this.src)">
+  <img src="https://emojiapi.dev/api/v1/bear/64.png" class="sticker" onclick="addSticker(this.src, getCurrentSide())">
+  <img src="https://emojiapi.dev/api/v1/cat/64.png" class="sticker" onclick="addSticker(this.src, getCurrentSide())">
+  <img src="https://emojiapi.dev/api/v1/dog/64.png" class="sticker" onclick="addSticker(this.src, getCurrentSide())">
+  <img src="https://emojiapi.dev/api/v1/sparkles/64.png" class="sticker" onclick="addSticker(this.src, getCurrentSide())">
+  <img src="https://emojiapi.dev/api/v1/sun/64.png" class="sticker" onclick="addSticker(this.src, getCurrentSide())">
+
 </div>
 
 <script>
@@ -182,19 +184,20 @@
   let selectedEl = null;
 
   function getCurrentSide() {
-    return sideSelect.value === "front" ? cardFront : cardBack;
-  }
+  return card3d.classList.contains("flipped") ? cardBack : cardFront;
+}
 
   bgColorPicker.addEventListener("input", function (e) {
     getCurrentSide().style.backgroundColor = e.target.value;
   });
 
   imageUpload.addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      addSticker(event.target.result);
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  const targetSide = getCurrentSide(); // 고정된 면 저장
+  reader.onload = function (event) {
+      addSticker(event.target.result, targetSide);
     };
     reader.readAsDataURL(file);
   });
@@ -218,39 +221,44 @@
     box.style.top = "100px";
     box.style.fontSize = fontSize + "px";
     getCurrentSide().appendChild(box);
-    makeDraggableAndResizable(box);
+    makeDraggableAndResizable(box, null, getCurrentSide());
     makeSelectable(box);
     addDeleteButton(box);
   }
 
-  function addSticker(src) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "sticker-wrapper";
-    wrapper.style.left = "200px";
-    wrapper.style.top = "100px";
+  function addSticker(src, side) {
+  const target = side || getCurrentSide();
+  const wrapper = document.createElement("div");
+  wrapper.className = "sticker-wrapper";
+  wrapper.style.left = "200px";
+  wrapper.style.top = "100px";
 
-    const img = document.createElement("img");
-    img.src = src;
-    img.className = "sticker-img";
+  const img = document.createElement("img");
+  img.src = src;
+  img.className = "sticker-img";
 
-    const handle = document.createElement("div");
-    handle.className = "resize-handle";
+  const handle = document.createElement("div");
+  handle.className = "resize-handle";
 
-    wrapper.appendChild(img);
-    wrapper.appendChild(handle);
-    getCurrentSide().appendChild(wrapper);
-    makeDraggableAndResizable(wrapper, handle);
-    makeSelectable(wrapper);
-    addDeleteButton(wrapper);
-  }
+  wrapper.appendChild(img);
+  wrapper.appendChild(handle);
+  target.appendChild(wrapper);
+  makeDraggableAndResizable(wrapper, handle, target);
+  makeSelectable(wrapper);
+  addDeleteButton(wrapper);
+}
 
   function flipCard() {
-    card3d.classList.toggle("flipped");
-  }
+  card3d.classList.toggle("flipped");
+  const label = document.getElementById("sideLabel");
+  const flipped = card3d.classList.contains("flipped");
+  label.textContent = flipped ? "지금 뒷면을 편집 중입니다." : "지금 앞면을 편집 중입니다.";
+}
 
-  function makeDraggableAndResizable(el, handle = null) {
+  function makeDraggableAndResizable(el, handle = null, container = null) {
     let isDragging = false, isResizing = false;
     let offsetX, offsetY, startX, startY, startWidth, startHeight;
+    const parent = container || el.parentNode;
 
     el.addEventListener("mousedown", (e) => {
       if (e.target === handle || e.target.classList.contains("delete-btn")) return;
@@ -271,7 +279,6 @@
     }
 
     document.addEventListener("mousemove", (e) => {
-      const parent = el.parentNode;
       const rect = parent.getBoundingClientRect();
       if (isDragging) {
         let x = e.clientX - rect.left - offsetX;
