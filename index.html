@@ -123,6 +123,22 @@
     .selected {
       outline: 2px dashed red;
     }
+
+    .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: red;
+      color: white;
+      font-size: 12px;
+      width: 20px;
+      height: 20px;
+      text-align: center;
+      line-height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -140,6 +156,7 @@
   <input type="text" id="textInput" placeholder="텍스트 입력">
   <button onclick="addText()">텍스트 추가</button>
   <button onclick="flipCard()">회전하기</button>
+  <input type="file" id="imageUpload" accept="image/*">
 </div>
 
 <div class="flip-container">
@@ -161,6 +178,7 @@
   const cardBack = document.getElementById("cardBack");
   const bgColorPicker = document.getElementById("bgColorPicker");
   const sideSelect = document.getElementById("sideSelect");
+  const imageUpload = document.getElementById("imageUpload");
   let selectedEl = null;
 
   function getCurrentSide() {
@@ -170,6 +188,24 @@
   bgColorPicker.addEventListener("input", function (e) {
     getCurrentSide().style.backgroundColor = e.target.value;
   });
+
+  imageUpload.addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      addSticker(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function addDeleteButton(parent) {
+    const del = document.createElement("div");
+    del.className = "delete-btn";
+    del.innerText = "✖";
+    del.onclick = () => parent.remove();
+    parent.appendChild(del);
+  }
 
   function addText() {
     const text = document.getElementById("textInput").value;
@@ -184,6 +220,7 @@
     getCurrentSide().appendChild(box);
     makeDraggableAndResizable(box);
     makeSelectable(box);
+    addDeleteButton(box);
   }
 
   function addSticker(src) {
@@ -204,6 +241,7 @@
     getCurrentSide().appendChild(wrapper);
     makeDraggableAndResizable(wrapper, handle);
     makeSelectable(wrapper);
+    addDeleteButton(wrapper);
   }
 
   function flipCard() {
@@ -215,7 +253,7 @@
     let offsetX, offsetY, startX, startY, startWidth, startHeight;
 
     el.addEventListener("mousedown", (e) => {
-      if (e.target === handle) return;
+      if (e.target === handle || e.target.classList.contains("delete-btn")) return;
       isDragging = true;
       offsetX = e.offsetX;
       offsetY = e.offsetY;
@@ -233,7 +271,8 @@
     }
 
     document.addEventListener("mousemove", (e) => {
-      const rect = getCurrentSide().getBoundingClientRect();
+      const parent = el.parentNode;
+      const rect = parent.getBoundingClientRect();
       if (isDragging) {
         let x = e.clientX - rect.left - offsetX;
         let y = e.clientY - rect.top - offsetY;
@@ -259,6 +298,7 @@
 
   function makeSelectable(el) {
     el.addEventListener("click", (e) => {
+      if (e.target.classList.contains("delete-btn")) return;
       e.stopPropagation();
       if (selectedEl) selectedEl.classList.remove("selected");
       selectedEl = el;
