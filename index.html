@@ -21,7 +21,8 @@
     }
 
     .toolbar input[type="text"],
-    .toolbar input[type="color"] {
+    .toolbar input[type="color"],
+    .toolbar input[type="number"] {
       padding: 6px;
       font-size: 16px;
       margin-right: 10px;
@@ -60,7 +61,6 @@
       backface-visibility: hidden;
       border: 2px solid black;
       overflow: hidden;
-
       -webkit-mask-image: linear-gradient(#000, #000);
       mask-image: linear-gradient(#000, #000);
       -webkit-mask-composite: destination-in;
@@ -74,11 +74,6 @@
     .card-back {
       background: #e0e0e0;
       transform: rotateY(180deg);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 24px;
-      font-weight: bold;
     }
 
     .text-box {
@@ -124,6 +119,10 @@
       border-radius: 50%;
       border: 2px solid white;
     }
+
+    .selected {
+      outline: 2px dashed red;
+    }
   </style>
 </head>
 <body>
@@ -131,25 +130,25 @@
 <h1>나만의 명함 만들기</h1>
 
 <div class="toolbar">
+  앞/뒤 선택:
+  <select id="sideSelect">
+    <option value="front">앞면</option>
+    <option value="back">뒷면</option>
+  </select>
   배경색: <input type="color" id="bgColorPicker" value="#f5f5f5">
+  글자 크기: <input type="number" id="fontSizeInput" value="24" min="10" max="72" step="2">
   <input type="text" id="textInput" placeholder="텍스트 입력">
   <button onclick="addText()">텍스트 추가</button>
   <button onclick="flipCard()">회전하기</button>
 </div>
 
-<!-- 3D 카드 영역 -->
 <div class="flip-container">
   <div id="card3d" class="card3d">
-    <!-- 앞면 -->
     <div id="cardFront" class="card-face card-front"></div>
-    <!-- 뒷면 -->
-    <div class="card-face card-back">
-      뒷면입니다.
-    </div>
+    <div id="cardBack" class="card-face card-back"></div>
   </div>
 </div>
 
-<!-- 스티커 선택 -->
 <div>
   <img src="https://emojiapi.dev/api/v1/cherry/64.png" class="sticker" onclick="addSticker(this.src)">
   <img src="https://emojiapi.dev/api/v1/star2/64.png" class="sticker" onclick="addSticker(this.src)">
@@ -157,24 +156,34 @@
 </div>
 
 <script>
-  const cardFront = document.getElementById("cardFront");
   const card3d = document.getElementById("card3d");
+  const cardFront = document.getElementById("cardFront");
+  const cardBack = document.getElementById("cardBack");
   const bgColorPicker = document.getElementById("bgColorPicker");
+  const sideSelect = document.getElementById("sideSelect");
+  let selectedEl = null;
+
+  function getCurrentSide() {
+    return sideSelect.value === "front" ? cardFront : cardBack;
+  }
 
   bgColorPicker.addEventListener("input", function (e) {
-    cardFront.style.backgroundColor = e.target.value;
+    getCurrentSide().style.backgroundColor = e.target.value;
   });
 
   function addText() {
     const text = document.getElementById("textInput").value;
+    const fontSize = document.getElementById("fontSizeInput").value;
     if (!text) return;
     const box = document.createElement("div");
     box.className = "text-box";
     box.textContent = text;
     box.style.left = "100px";
     box.style.top = "100px";
-    cardFront.appendChild(box);
+    box.style.fontSize = fontSize + "px";
+    getCurrentSide().appendChild(box);
     makeDraggableAndResizable(box);
+    makeSelectable(box);
   }
 
   function addSticker(src) {
@@ -192,8 +201,9 @@
 
     wrapper.appendChild(img);
     wrapper.appendChild(handle);
-    cardFront.appendChild(wrapper);
+    getCurrentSide().appendChild(wrapper);
     makeDraggableAndResizable(wrapper, handle);
+    makeSelectable(wrapper);
   }
 
   function flipCard() {
@@ -223,7 +233,7 @@
     }
 
     document.addEventListener("mousemove", (e) => {
-      const rect = cardFront.getBoundingClientRect();
+      const rect = getCurrentSide().getBoundingClientRect();
       if (isDragging) {
         let x = e.clientX - rect.left - offsetX;
         let y = e.clientY - rect.top - offsetY;
@@ -246,6 +256,27 @@
       isResizing = false;
     });
   }
+
+  function makeSelectable(el) {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (selectedEl) selectedEl.classList.remove("selected");
+      selectedEl = el;
+      selectedEl.classList.add("selected");
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Delete" && selectedEl && selectedEl.parentNode) {
+      selectedEl.remove();
+      selectedEl = null;
+    }
+  });
+
+  document.addEventListener("click", () => {
+    if (selectedEl) selectedEl.classList.remove("selected");
+    selectedEl = null;
+  });
 </script>
 
 </body>
